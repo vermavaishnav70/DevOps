@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ===== CONFIG =====
-INSTANCE_ID= "your-instance-id"   # <-- Replace with your real instance ID
+INSTANCE_ID="your-instance-id"   # <-- Replace with your real instance ID
 
 # ===== INPUT =====
 ACTION=$1

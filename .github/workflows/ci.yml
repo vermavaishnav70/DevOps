@@ -2,57 +2,57 @@ name: CI Pipeline
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [ "main" ]
   pull_request:
-    branches:
-      - main
-      - master
+    branches: [ "main" ]
 
 jobs:
-  build-client:
-    name: Build Client
+  build-and-test:
     runs-on: ubuntu-latest
-    
-    defaults:
-      run:
-        working-directory: ./client
-    
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: client/package-lock.json
-      - name: Install dependencies
-        run: npm install
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: |
+          client/package-lock.json
+          server/package-lock.json
 
-      - name: Build
-        run: npm run build
+    - name: Install Client Dependencies
+      working-directory: ./client
+      run: npm ci
 
-  build-server:
-    name: Build Server
-    runs-on: ubuntu-latest
-    
-    defaults:
-      run:
-        working-directory: ./server
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Install Server Dependencies
+      working-directory: ./server
+      run: npm ci
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: server/package-lock.json
+    - name: Run Client Linter
+      working-directory: ./client
+      run: npm run lint
 
-      - name: Install dependencies
-        run: npm install
+    - name: Run Server Linter
+      working-directory: ./server
+      run: npm run lint
+
+    - name: Run Client Unit Tests
+      working-directory: ./client
+      run: npm test -- --run
+
+    - name: Run Server Unit & Integration Tests
+      working-directory: ./server
+      env:
+        MONGO_URI: mongodb://localhost:27017/testdb
+      run: npm test
+
+    # Example E2E Testing if configured with Cypress
+    # - name: Run E2E Tests
+    #   working-directory: ./client
+    #   run: npx cypress run
