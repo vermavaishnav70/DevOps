@@ -1,8 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 
+const mongoose = require('mongoose');
+
 const app = express();
 
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/shopsmart')
+  .then(() => console.log('Connected to MongoDB'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes
 const productsRouter = require('./routes/products');
