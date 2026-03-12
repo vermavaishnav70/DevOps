@@ -1,34 +1,52 @@
 import { useState, useEffect } from 'react'
 
 function App() {
-    const [data, setData] = useState(null);
+    const [products, setProducts] = useState([]);
+    const [status, setStatus] = useState(null);
 
     useEffect(() => {
-        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        
+        // Fetch health
         fetch(`${apiUrl}/api/health`)
             .then(res => res.json())
-            .then(data => setData(data))
+            .then(data => setStatus(data.status))
             .catch(err => console.error('Error fetching health check:', err));
+
+        // Fetch products
+        fetch(`${apiUrl}/api/products`)
+            .then(res => res.json())
+            .then(data => setProducts(data))
+            .catch(err => console.error('Error fetching products:', err));
     }, []);
 
     return (
         <div className="container">
-            <h1>ShopSmart</h1>
-            <div className="card">
-                <h2>Backend Status</h2>
-                {data ? (
-                    <div>
-                        <p>Status: <span className="status-ok">{data.status}</span></p>
-                        <p>Message: {data.message}</p>
-                        <p>Timestamp: {data.timestamp}</p>
-                    </div>
-                ) : (
-                    <p>Loading backend status...</p>
-                )}
-            </div>
-            <p className="hint">
-                Edit <code>src/App.jsx</code> and save to test HMR
-            </p>
+            <header className="header">
+                <h1 className="logo">ShopSmart</h1>
+                <div className="status-badge">Backend: {status === 'ok' ? '🟢 Online' : '🔴 Offline'}</div>
+            </header>
+            
+            <main className="main-content">
+                <h2 className="section-title">Featured Products</h2>
+                <div className="product-grid">
+                    {products.length > 0 ? (
+                        products.map(product => (
+                            <div key={product._id} className="product-card">
+                                <div className="product-image-placeholder">🛒</div>
+                                <h3 className="product-name">{product.name}</h3>
+                                <p className="product-desc">{product.description || 'Awesome product'}</p>
+                                <div className="product-footer">
+                                    <span className="product-price">${product.price}</span>
+                                    <button className="btn-buy">Buy Now</button>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="empty-state">No products available at the moment.</p>
+                    )}
+                </div>
+            </main>
         </div>
     )
 }
