@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react'
 
 function App() {
-    const [products, setProducts] = useState([]);
+    const [products, setProducts] = useState([{
+        name: 'Product 1',
+        description: 'Description 1',
+        price: 100,
+    }, {
+        name: 'Product 2',
+        description: 'Description 2',
+        price: 200,
+    }, {
+        name: 'Product 3',
+        description: 'Description 3',
+        price: 300,
+    }]);
     const [status, setStatus] = useState(null);
 
     useEffect(() => {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-        
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
         // Fetch health
         fetch(`${apiUrl}/api/health`)
             .then(res => res.json())
@@ -26,7 +38,7 @@ function App() {
                 <h1 className="logo">ShopSmart</h1>
                 <div className="status-badge">Backend: {status === 'ok' ? '🟢 Online' : '🔴 Offline'}</div>
             </header>
-            
+
             <main className="main-content">
                 <h2 className="section-title">Featured Products</h2>
                 <div className="product-grid">
