@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 const request = require('supertest');
 const app = require('../src/app');
 const mongoose = require('mongoose');
@@ -15,7 +16,7 @@ describe('Products API', () => {
         mongoServer = await MongoMemoryServer.create();
         const uri = mongoServer.getUri();
         await mongoose.connect(uri);
-    });
+    }, 60000);
 
     afterAll(async () => {
         await mongoose.disconnect();
