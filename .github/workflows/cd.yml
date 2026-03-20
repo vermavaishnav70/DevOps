@@ -27,7 +27,8 @@ jobs:
         echo "$EC2_SSH_KEY" > private_key.pem
         chmod 600 private_key.pem
         
-        # Example of how to SSH and restart services
+        # Example of how to SSH and restart services when real secrets are configured
+        # This automates the execution of commands on the remote AWS EC2 instance.
         ssh -o StrictHostKeyChecking=no -i private_key.pem $EC2_USER@$EC2_HOST '
           cd /path/to/DevOps &&
           git pull origin main &&

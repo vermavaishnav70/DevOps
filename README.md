@@ -1,7 +1,7 @@
 # Instructions
 
-1. Use SQLITE3 for database storage implementation
-1. Use Prisma for ORM
+1. Use MongoDB for database storage implementation
+1. Use Mongoose for ORM
 1. Implement at least one full CRUD RESTful API
 1. Deploy it on Render for backend and vercel for frontend
 1. Resolve CORS issue if needed after deployment
@@ -20,7 +20,7 @@ The project follows a standard 3-tier MERN-like architecture:
    - Sets up Node.js for client and server.
    - Runs ESLint to check for stylistic and syntax errors.
    - Runs unit and integration tests (Jest / Vitest).
-3. **CD (Continuous Deployment)**: Simulated via an AWS EC2 deployment Github action that connects to a target server via SSH.
+3. **CD (Continuous Deployment)**: Simulated via an AWS EC2 deployment Github action that connects to a target server via SSH. *(Note: For a full deployment, `EC2_HOST`, `EC2_USER`, and `EC2_SSH_KEY` must be configured in GitHub Secrets. Without these, the CD step cleanly simulates success but skips SSH.)*
 4. **Dependabot**: Automatically scans and updates `npm` dependencies weekly.
 
 ### Design Decisions
