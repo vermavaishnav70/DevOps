@@ -4,9 +4,8 @@ const app = require('../src/app');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
-describe('Products API', () => {
+describe('Stats API', () => {
     let mongoServer;
-    let createdProductId;
 
     beforeAll(async () => {
         // Disconnect from the existing connection in app.js if any
@@ -30,63 +29,28 @@ describe('Products API', () => {
         }
     });
 
-    it('GET /api/products should return empty array initially', async () => {
-        const res = await request(app).get('/api/products');
+    it('GET /api/stats should return a default stat object initially', async () => {
+        const res = await request(app).get('/api/stats');
         expect(res.statusCode).toEqual(200);
-        expect(Array.isArray(res.body)).toBe(true);
-        expect(res.body.length).toBe(0);
-    });
-
-    it('POST /api/products should create a new product', async () => {
-        const newProduct = {
-            name: 'Tablet',
-            description: 'A cool tablet',
-            price: 299,
-            category: 'Electronics'
-        };
-        const res = await request(app).post('/api/products').send(newProduct);
-        expect(res.statusCode).toEqual(201);
         expect(res.body).toHaveProperty('_id');
-        expect(res.body.name).toEqual(newProduct.name);
-        createdProductId = res.body._id;
+        expect(res.body.vitality).toBe(85);
+        expect(res.body.focus).toBe(92);
+        expect(res.body.metabolicRate).toBe('1,840 kcal active');
+        expect(res.body.sleepQuality).toBe('Excellent');
+        expect(res.body.deepWorkStreak).toBe(4);
+        expect(res.body.consciousnessLevel).toBe('Lucid');
     });
 
-    it('GET /api/products/:id should return a specific product', async () => {
-        // First create it safely
-        const newProduct = { name: 'Tablet', price: 299, category: 'Electronics' };
-        const postRes = await request(app).post('/api/products').send(newProduct);
-        createdProductId = postRes.body._id;
-
-        const res = await request(app).get(`/api/products/${createdProductId}`);
+    it('POST /api/stats should create or update the single stat object', async () => {
+        const updateData = {
+            vitality: 90,
+            focus: 95
+        };
+        const res = await request(app).post('/api/stats').send(updateData);
         expect(res.statusCode).toEqual(200);
-        expect(res.body).toHaveProperty('_id', createdProductId);
-    });
-
-    it('PUT /api/products/:id should update a product', async () => {
-        // First create it safely
-        const newProduct = { name: 'Tablet', price: 299, category: 'Electronics' };
-        const postRes = await request(app).post('/api/products').send(newProduct);
-        createdProductId = postRes.body._id;
-
-        const updatedData = { name: 'Updated Tablet', price: 350 };
-        const res = await request(app).put(`/api/products/${createdProductId}`).send(updatedData);
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.name).toEqual(updatedData.name);
-        expect(res.body.price).toEqual(updatedData.price);
-    });
-
-    it('DELETE /api/products/:id should delete a product', async () => {
-        // First create it safely
-        const newProduct = { name: 'Tablet', price: 299, category: 'Electronics' };
-        const postRes = await request(app).post('/api/products').send(newProduct);
-        createdProductId = postRes.body._id;
-
-        const res = await request(app).delete(`/api/products/${createdProductId}`);
-        expect(res.statusCode).toEqual(200);
-        expect(res.body).toHaveProperty('_id', createdProductId);
-
-        // Confirm deletion
-        const checkRes = await request(app).get(`/api/products/${createdProductId}`);
-        expect(checkRes.statusCode).toEqual(404);
+        expect(res.body).toHaveProperty('_id');
+        expect(res.body.vitality).toEqual(90);
+        expect(res.body.focus).toEqual(95);
+        expect(res.body.consciousnessLevel).toBe('Lucid'); // Default value should remain
     });
 });
