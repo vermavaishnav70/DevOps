@@ -15,8 +15,7 @@ const productsRouter = require('./routes/products');
 app.use(cors({
   origin: [
     'http://localhost:5173',           // local dev
-    'https://dev-ops-flax.vercel.app',     // vercel frontend
-    /\.vercel\.app$/                   // all vercel preview URLs
+    'https://dev-ops-flax.vercel.app/',     // vercel frontend
   ],
   credentials: true
 }));
