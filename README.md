@@ -32,3 +32,4 @@ The project follows a standard 3-tier MERN-like architecture:
 ### Challenges
 - **Test Automation with Mongoose**: Setting up `mongodb-memory-server` required handling `mongoose.connection` carefully to avoid overlapping connection pools during automated Jest testing.
 - **Idempotency in Bash**: Making sure `npm install` only runs when necessary required checking for the existence of `node_modules`.
+ 
