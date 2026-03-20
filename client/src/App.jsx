@@ -17,7 +17,8 @@ function App() {
     const [status, setStatus] = useState(null);
 
     useEffect(() => {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+        // Use VITE_API_URL if set, otherwise use localhost in dev, or empty string (relative) in prod
+        const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5001' : '');
 
         // Fetch health
         fetch(`${apiUrl}/api/health`)
