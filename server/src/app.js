@@ -22,7 +22,7 @@ app.use(cors({
 
 app.use(express.json());
 
-app.use('/api/products', productsRouter);
+app.use('/api/stats', productsRouter);
 
 // Health Check Route
 app.get('/api/health', (req, res) => {
