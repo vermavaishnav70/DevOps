@@ -12,7 +12,15 @@ connectDB();
 const productsRouter = require('./routes/products');
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',           // local dev
+    'https://dev-ops-flax.vercel.app',     // vercel frontend
+    /\.vercel\.app$/                   // all vercel preview URLs
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
 
 app.use('/api/products', productsRouter);
