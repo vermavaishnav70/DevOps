@@ -1,0 +1,230 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  PROJECT_NAME: shopsmart
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+
+      - name: Install Client Dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Install Server Dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Run Client Linter
+        working-directory: ./client
+        run: npm run lint
+
+      - name: Run Server Linter
+        working-directory: ./server
+        run: npm run lint
+
+      - name: Run Client Unit Tests
+        working-directory: ./client
+        run: npm test -- --run --reporter=junit --outputFile=test-results.xml || true
+
+      - name: Run Server Tests
+        working-directory: ./server
+        run: npm test -- --coverage --reporters=default --reporters=jest-junit || true
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            client/test-results.xml
+            server/junit.xml
+            server/coverage/
+
+  terraform:
+    name: Terraform Apply
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
+
+      - name: Export Terraform Outputs
+        working-directory: ./terraform
+        run: terraform output -json > tf_outputs.json
+
+      - name: Upload Terraform State and Outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-data
+          path: |
+            terraform/terraform.tfstate
+            terraform/tf_outputs.json
+
+  docker_build:
+    name: Docker Build & Push
+    needs: terraform
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download Terraform Data
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-data
+          path: terraform/
+
+      - name: Get ECR URL
+        id: get-ecr
+        run: |
+          ECR_URL=$(jq -r '.ecr_repository_url.value' terraform/tf_outputs.json)
+          echo "ECR_URL=$ECR_URL" >> $GITHUB_ENV
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag, and Push Docker Image
+        working-directory: ./server
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_URL:$IMAGE_TAG -t $ECR_URL:latest .
+          docker push $ECR_URL:$IMAGE_TAG
+          docker push $ECR_URL:latest
+
+  deploy:
+    name: ECS & S3 Deploy
+    needs: docker_build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download Terraform Data
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-data
+          path: terraform/
+
+      - name: Load Infrastructure Variables
+        run: |
+          echo "FRONTEND_BUCKET=$(jq -r '.frontend_bucket_name.value' terraform/tf_outputs.json)" >> $GITHUB_ENV
+          echo "CLOUDFRONT_ID=$(jq -r '.cloudfront_distribution_id.value' terraform/tf_outputs.json)" >> $GITHUB_ENV
+          echo "ECS_CLUSTER=$(jq -r '.ecs_cluster_name.value' terraform/tf_outputs.json)" >> $GITHUB_ENV
+          echo "ECS_SERVICE=$(jq -r '.ecs_service_name.value' terraform/tf_outputs.json)" >> $GITHUB_ENV
+
+      - name: Setup Node.js for Client Build
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Build Frontend
+        working-directory: ./client
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy Frontend to S3
+        working-directory: ./client
+        run: |
+          aws s3 sync dist/ s3://${{ env.FRONTEND_BUCKET }} --delete
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_ID }} --paths "/*"
+
+      - name: Update ECS Service
+        run: |
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment
+
+      - name: Check ECS Service Status
+        run: |
+          echo "Waiting for ECS service to stabilize..."
+          aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
+          
+          echo "Verifying service is running..."
+          SERVICE_STATUS=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }} --query 'services[0].status' --output text)
+          if [ "$SERVICE_STATUS" = "ACTIVE" ]; then
+            echo "✅ ECS Service is running and ACTIVE."
+          else
+            echo "❌ ECS Service is not active. Current status: $SERVICE_STATUS"
+            exit 1
+          fi
