@@ -21,3 +21,9 @@ variable "ecs_task_execution_role_name" {
   type        = string
   default     = "shopsmart-ecs-task-execution-role"
 }
+
+variable "mongo_uri" {
+  description = "MongoDB connection string"
+  type        = string
+  sensitive   = true
+}

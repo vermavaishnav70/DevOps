@@ -229,6 +229,12 @@ resource "aws_ecs_task_definition" "backend_task" {
           protocol      = "tcp"
         }
       ]
+      environment = [
+        {
+          name  = "MONGO_URI"
+          value = var.mongo_uri
+        }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
