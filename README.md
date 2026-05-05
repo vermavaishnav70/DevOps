@@ -63,17 +63,6 @@ We strictly enforce the following workflow order in our GitHub Actions pipeline 
 3. **Docker Build & Push**: The backend application is built using a **multi-stage Dockerfile** (running as a **non-root user** with a **healthcheck**) and pushed to the newly provisioned Amazon ECR repository.
 4. **ECS Deploy**: The frontend is synced to the S3 bucket. The backend ECS Service is updated to run the latest Docker image. The pipeline concludes by running `aws ecs describe-services` to verify the service is successfully running and active.
 
-### Screenshots
-
-**GitHub Actions Pipeline Success**
-*(Insert Screenshot Here)*
-
-**AWS ECS Service Running**
-*(Insert Screenshot Here)*
-
-**AWS S3 Configuration (Encryption, Versioning)**
-*(Insert Screenshot Here)*
-
 ---
 
 ### Local Development & Testing
