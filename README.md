@@ -21,8 +21,7 @@ graph TD
         ECR[AWS ECR<br>Docker Registry] -->|Pulls Image| ECS
         CloudWatch[AWS CloudWatch<br>Logs & Monitoring]
         ECS -->|Sends Logs| CloudWatch
-        TF_S3[AWS S3<br>Terraform State]
-        TF_DDB[AWS DynamoDB<br>State Lock]
+        TF_S3[AWS S3<br>Terraform State & Locks]
     end
 ```
 
@@ -30,7 +29,7 @@ The application is deployed entirely on AWS using Infrastructure as Code (Terraf
 - **Frontend**: Hosted on **AWS S3** as a static website.
 - **Backend**: Containerized via Docker, stored in **AWS ECR**, and deployed to **AWS ECS Fargate** as a serverless container.
 - **Monitoring**: Application logs are automatically shipped to **Amazon CloudWatch** for observability and monitoring.
-- **Terraform State**: Remote state is securely stored in a dynamically created **AWS S3** bucket, with **Amazon DynamoDB** providing state locking to prevent concurrent modifications.
+- **Terraform State**: Remote state is securely stored in a dynamically created **AWS S3** bucket, utilizing modern native S3 state locking (`use_lockfile=true`) to prevent concurrent modifications.
 
 ### Deployed Application
 - **URL**: [http://<s3-website-endpoint>](http://<s3-website-endpoint>) *(Placeholder)*
@@ -58,7 +57,7 @@ We strictly enforce the following workflow order in our GitHub Actions pipeline 
 
 1. **CI (Tests)**: On push/PR to `main`, the pipeline sets up Node.js, runs client/server linters, and executes unit/integration tests. Test reports (JUnit) and coverage artifacts are generated and uploaded.
 2. **Terraform Apply**: 
-   - Dynamically provisions an S3 bucket and DynamoDB table for **Remote State Management** if they don't already exist.
+   - Dynamically provisions an S3 bucket for **Remote State Management** if it doesn't already exist.
    - Initializes, plans, and automatically applies the infrastructure (S3, ECR, ECS, Security Groups). S3 buckets are configured with **versioning enabled**, **AES256 encryption**, and **public access blocked**.
    - Note: To comply with AWS Academy (`voclabs`) restrictions, Terraform uses the pre-existing `LabRole` rather than creating new IAM roles.
 3. **Docker Build & Push**: The backend application is built using a **multi-stage Dockerfile** (running as a **non-root user** with a **healthcheck**) and pushed to the newly provisioned Amazon ECR repository.
@@ -109,5 +108,5 @@ npm run lint     # Run ESLint
 
 ### Challenges
 - **AWS Academy / Learner Lab (`voclabs`) Restrictions**: Encountered strict IAM permission boundaries (e.g., inability to create IAM roles or CloudFront distributions). Overcame this by hardcoding the pre-existing `LabRole`, dynamically appending random suffixes to resources to handle state desynchronization, and utilizing a pure S3 deployment.
-- **State Management**: Ensuring Terraform tracks existing resources effectively within a CI/CD pipeline. Resolved by implementing an S3 + DynamoDB remote backend dynamically inside the pipeline runner.
+- **State Management**: Ensuring Terraform tracks existing resources effectively within a CI/CD pipeline. Resolved by implementing an S3 remote backend dynamically inside the pipeline runner using native S3 state locking.
 - **Test Automation with Mongoose**: Setting up `mongodb-memory-server` required handling `mongoose.connection` carefully to avoid overlapping connection pools during automated Jest testing.
