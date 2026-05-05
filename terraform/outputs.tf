@@ -3,16 +3,6 @@ output "frontend_bucket_name" {
   value       = aws_s3_bucket.frontend_bucket.bucket
 }
 
-output "cloudfront_domain_name" {
-  description = "The domain name of the CloudFront distribution"
-  value       = aws_cloudfront_distribution.frontend_distribution.domain_name
-}
-
-output "cloudfront_distribution_id" {
-  description = "The ID of the CloudFront distribution"
-  value       = aws_cloudfront_distribution.frontend_distribution.id
-}
-
 output "ecr_repository_url" {
   description = "The URL of the ECR repository"
   value       = aws_ecr_repository.backend_repo.repository_url
